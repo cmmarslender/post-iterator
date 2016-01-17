@@ -1,0 +1,19 @@
+{
+    "name": "cmmarslender/post-iterator",
+    "description": "WPDB Based Post Iterator for WordPress",
+    "type": "wordpress-plugin",
+    "authors": [
+        {
+            "name": "Chris Marslender",
+            "email": "chrismarslender@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Marslender\\PostIterator\\": "includes/Marslender/PostIterator"
+        }
+    },
+    "require": {
+        "composer/installers": "~1.0"
+    }
+}
