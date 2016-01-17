@@ -1,6 +1,6 @@
 <?php
 
-namespace Marslender\PostIterator;
+namespace Cmmarslender\PostIterator;
 
 use WP_CLI;
 

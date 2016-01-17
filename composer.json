@@ -10,7 +10,7 @@
     ],
     "autoload": {
         "psr-4": {
-            "Marslender\\PostIterator\\": "includes/Marslender/PostIterator"
+            "Cmmarslender\\PostIterator\\": "includes/Cmmarslender/PostIterator"
         }
     },
     "require": {
