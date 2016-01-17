@@ -2,8 +2,6 @@
 
 namespace Cmmarslender\PostIterator;
 
-use WP_CLI;
-
 abstract class PostIterator  {
 
 	public $post_type;
@@ -113,7 +111,7 @@ abstract class PostIterator  {
 			foreach( $post_ids as $post_id ) {
 				$this->current_post_count++;
 				$percent = round( $this->current_post_count / $limit * 100, 2 );
-				WP_CLI::log( "{$this->current_post_count} / {$limit} ({$percent}%) | Processing Post ID {$post_id}");
+				Logger::log( "{$this->current_post_count} / {$limit} ({$percent}%) | Processing Post ID {$post_id}");
 
 				$current_time = time();
 				$total_seconds = $current_time - $this->start_time;
@@ -124,7 +122,7 @@ abstract class PostIterator  {
 				$remaining = ( $limit - $this->current_post_count ) * $average_per_post;
 				$remaining_min = floor( $remaining / 60 );
 				$remaining_sec = $remaining % 60;
-				WP_CLI::log( "We've been at this for {$minutes}:{$seconds}. Based on the average of {$average_pretty} seconds per post, this will finish in {$remaining_min}:{$remaining_sec}" );
+				Logger::log( "We've been at this for {$minutes}:{$seconds}. Based on the average of {$average_pretty} seconds per post, this will finish in {$remaining_min}:{$remaining_sec}" );
 
 				$post = get_post( $post_id );
 
@@ -132,6 +130,7 @@ abstract class PostIterator  {
 				$this->current_post_object = $post;
 
 				$this->process_post();
+				$this->update_post();
 			}
 
 			$offset += $per_page;
@@ -177,8 +176,11 @@ abstract class PostIterator  {
 	 * Calls wp_update_post
 	 */
 	public function update_post() {
-		wp_update_post( $this->current_post_object );
-		WP_CLI::log( "Updated post ID {$this->current_post_object->ID}" );
+		// @todo make sure this comparison actually works
+		if ( $this->original_post_object != $this->current_post_object ) {
+			wp_update_post( $this->current_post_object );
+			Logger::log( "Updated post ID {$this->current_post_object->ID}" );
+		}
 	}
 
 }
