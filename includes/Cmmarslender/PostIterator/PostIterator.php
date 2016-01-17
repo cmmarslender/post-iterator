@@ -131,7 +131,7 @@ abstract class PostIterator  {
 				$this->original_post_object = clone $post;
 				$this->current_post_object = $post;
 
-				$this->process_post( $post );
+				$this->process_post();
 			}
 
 			$offset += $per_page;
@@ -143,11 +143,9 @@ abstract class PostIterator  {
 	/**
 	 * The function that actually implements the work we need to get done.
 	 *
-	 * @param \WP_Post $post The current post to work on
-	 *
 	 * @return void
 	 */
-	abstract function process_post( \WP_Post $post );
+	abstract function process_post();
 
 	protected function get_where() {
 		global $wpdb;
@@ -177,12 +175,10 @@ abstract class PostIterator  {
 
 	/**
 	 * Calls wp_update_post
-	 *
-	 * @param $post
 	 */
-	public function update_post( $post ) {
-		wp_update_post( $post );
-		WP_CLI::log( "Updated post ID {$post->ID}" );
+	public function update_post() {
+		wp_update_post( $this->current_post_object );
+		WP_CLI::log( "Updated post ID {$this->current_post_object->ID}" );
 	}
 
 }
