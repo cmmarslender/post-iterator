@@ -1,7 +1,7 @@
 {
     "name": "cmmarslender/post-iterator",
     "description": "WPDB Based Post Iterator for WordPress",
-    "type": "wordpress-plugin",
+    "type": "wordpress-library",
     "authors": [
         {
             "name": "Chris Marslender",
