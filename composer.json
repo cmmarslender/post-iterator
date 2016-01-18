@@ -16,5 +16,8 @@
     "require": {
         "composer/installers": "~1.0"
     },
-    "license": "MIT"
+    "license": "MIT",
+    "require-dev": {
+        "10up/wp_mock": "dev-master"
+    }
 }
