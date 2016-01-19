@@ -1,6 +1,6 @@
 <?php
 
-namespace Cmmarslender\Post_Iterator;
+namespace Cmmarslender\PostIterator;
 
 use PHPUnit_Framework_TestResult;
 use Text_Template;
