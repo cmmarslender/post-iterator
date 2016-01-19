@@ -67,9 +67,9 @@ class TestCase extends BaseTestCase {
 	 * @param \Text_Template $template
 	 */
 	public function prepareTemplate( \Text_Template $template ) {
-		$template->setVar( [
+		$template->setVar( array(
 			'globals' => '$GLOBALS[\'__PHPUNIT_BOOTSTRAP\'] = \'' . $GLOBALS['__PHPUNIT_BOOTSTRAP'] . '\';',
-		] );
+		) );
 		parent::prepareTemplate( $template );
 	}
 }
