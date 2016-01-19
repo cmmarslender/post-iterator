@@ -27,28 +27,6 @@ abstract class PostIterator  {
 	 */
 	public $original_post_object;
 
-	public function __construct( $args = array() ) {
-		$defaults = array(
-			'post_type' => 'post',
-			'post_status' => 'publish',
-			'offset' => 0,
-			'limit' => -1,
-			'orderby' => 'post_date',
-			'order' => 'DESC',
-		);
-
-		$args = wp_parse_args( $args, $defaults );
-
-		$this->post_type = $args['post_type'];
-		$this->post_status = $args['post_status'];
-		$this->offset = $args['offset'];
-		$this->limit = $args['limit'];
-		$this->orderby = $args['orderby'];
-		$this->order = $args['order'];
-
-		$this->timer = new Timer();
-	}
-
 	/**
 	 * Iterates over the posts matched by the args passed to the class
 	 */
@@ -57,16 +35,6 @@ abstract class PostIterator  {
 		$this->timer->set_total_items( $this->total_posts );
 		$this->timer->start();
 		$this->iterate();
-	}
-
-	protected function count_posts() {
-		global $wpdb;
-
-		$where = $this->get_where();
-
-		$count = $wpdb->get_var( "select count(ID) from {$wpdb->posts} {$where}" );
-
-		$this->total_posts = $count;
 	}
 
 	protected function iterate() {

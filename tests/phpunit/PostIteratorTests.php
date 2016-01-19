@@ -81,6 +81,19 @@ class PostIteratorTests extends TestCase {
 		$this->assertInstanceOf( 'Cmmarslender\\Timer\\Timer', $iterator->timer );
 	}
 
+	/**
+	 * Test that when we get a result from wpdb->get_var it gets assigned to total posts
+	 */
+	public function test_count_posts() {
+		global $wpdb;
+
+		$wpdb->shouldReceive( 'get_var' )->andReturn( '26' );
+
+		$iterator = $this->get_iterator();
+		$this->invoke_method( $iterator, 'count_posts' );
+		$this->assertEquals( 13, $iterator->total_posts );
+	}
+
 	public function test_get_count_query_base() {
 		$iterator = $this->get_iterator();
 

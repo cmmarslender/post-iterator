@@ -33,7 +33,6 @@ abstract class PostIterator {
 	 */
 	public $total_posts;
 
-
 	public function __construct( $args = array() ) {
 		$defaults = array(
 			'post_type' => 'post',
@@ -52,7 +51,16 @@ abstract class PostIterator {
 		$this->timer = new Timer();
 	}
 
+	/**
+	 * Counts the total number of posts that match the restrictions, not including pagination.
+	 */
+	protected function count_posts() {
+		global $wpdb;
 
+		$query = $this->get_count_query();
+
+		$this->total_posts = $wpdb->get_var( $query );
+	}
 
 	protected function get_count_query_base() {
 		global $wpdb;
