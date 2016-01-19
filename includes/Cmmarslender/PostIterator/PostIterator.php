@@ -2,149 +2,151 @@
 
 namespace Cmmarslender\PostIterator;
 
-abstract class PostIterator  {
+use Cmmarslender\Timer\Timer;
 
+abstract class PostIterator {
+
+	/*
+	 * Query Related Variables
+	 */
 	public $post_type;
-
 	public $post_status;
-
 	public $offset;
-
 	public $limit;
-
 	public $orderby;
-
 	public $order;
 
-	public $start_time;
+	/**
+	 * @var \Cmmarslender\Timer\Timer
+	 */
+	public $timer;
+
+	/*
+	 * State Related Variables
+	 */
+	/**
+	 * Tracks if we've set the iterator up yet (Count posts, setup timer, etc)
+	 *
+	 * @var bool
+	 */
+	public $is_setup = false;
 
 	/**
-	 * Will contain the total number of posts returned that match the constraints, NOT INCLUDING the limits and offsets
+	 * Total number of posts found that match the constraints, NOT including limits and offsets
+	 *
+	 * @see count_posts();
 	 *
 	 * @var int
 	 */
 	public $total_posts;
 
 	/**
-	 * Counter that indicates the current post we're working on.
-	 *
-	 * @var int
-	 */
-	public $current_post_count = 0;
-
-	/**
-	 * The current post we are processing with process_post
-	 *
-	 * @var \WP_Post
-	 */
-	public $current_post_object;
-
-	/**
-	 * Original Post object
+	 * The original post object. Used to check if anything has changed, and call update_post
 	 *
 	 * @var \WP_Post
 	 */
 	public $original_post_object;
 
+	/**
+	 * Post object we're currently working with. Modify this object directly.
+	 *
+	 * @var \WP_Post
+	 */
+	public $current_post_object;
+
 	public function __construct( $args = array() ) {
 		$defaults = array(
 			'post_type' => 'post',
 			'post_status' => 'publish',
-			'offset' => 0,
+			'per_page' => 100,
+			'page' => 1,
 			'limit' => -1,
 			'orderby' => 'post_date',
 			'order' => 'DESC',
 		);
 
-		$args = wp_parse_args( $args, $defaults );
+		foreach( $defaults as $key => $value ) {
+			$this->{$key} = isset( $args[ $key ] ) ? $args[ $key ] : $value;
+		}
 
-		$this->post_type = $args['post_type'];
-		$this->post_status = $args['post_status'];
-		$this->offset = $args['offset'];
-		$this->limit = $args['limit'];
-		$this->orderby = $args['orderby'];
-		$this->order = $args['order'];
+		$this->timer = new Timer();
+	}
+
+	public function setup() {
+		if ( false === $this->is_setup ) {
+			$this->count_posts();
+			$this->timer->set_total_items( $this->total_posts );
+			$this->is_setup = true;
+		}
+	}
+
+	public function go() {
+		$this->timer->start();
+		while( $this->have_pages() ) {
+			$this->process_page();
+			Utils::stop_the_insanity();
+		}
 	}
 
 	/**
-	 * Iterates over the posts matched by the args passed to the class
+	 * Indicates if we have posts to process
 	 */
-	public function go() {
-		$this->count_posts();
-		$this->start_time = time();
-		$this->iterate();
+	public function have_pages() {
+		$this->setup();
+
+		$offset = $this->get_query_offset();
+
+		return (bool) ( $offset < $this->total_posts );
 	}
 
+	public function process_page() {
+		global $wpdb;
+
+		// Just in case someone doesn't call have_pages() first
+		$this->setup();
+
+		$results = $wpdb->get_results( $this->get_query() );
+		$post_ids = wp_list_pluck( $results, 'ID' );
+
+		foreach ( $post_ids as $post_id ) {
+			$this->timer->tick();
+
+			// @todo add logging / status
+
+			$post = get_post( $post_id );
+
+			$this->original_post_object = clone $post;
+			$this->current_post_object = $post;
+
+			$this->process_post();
+			$this->update_post();
+		}
+
+		$this->page++;
+	}
+
+	/**
+	 * Counts the total number of posts that match the restrictions, not including pagination.
+	 */
 	protected function count_posts() {
 		global $wpdb;
 
-		$where = $this->get_where();
+		$query = $this->get_count_query();
 
-		$count = $wpdb->get_var( "select count(ID) from {$wpdb->posts} {$where}" );
-
-		$this->total_posts = $count;
+		$this->total_posts = $wpdb->get_var( $query );
 	}
 
-	protected function iterate() {
+	protected function get_count_query_base() {
 		global $wpdb;
 
-		$query_base = "SELECT ID from {$wpdb->posts}";
-		$query_where = $this->get_where();
-		$query_orderby = $this->get_orderby();
-
-		$limit = intval( $this->limit );
-		$offset = absint( $this->offset );
-
-		if ( -1 == $limit ) {
-			$limit = $this->total_posts;
-		}
-
-		$per_page = ( $limit > 100 ) ? 100 : $limit;
-
-		do {
-			$query_limit = $this->get_limit( $offset, $per_page );
-			$query = implode( " ", array( $query_base, $query_where, $query_orderby, $query_limit ) );
-
-			$results = $wpdb->get_results( $query );
-			$post_ids = wp_list_pluck( $results, 'ID' );
-
-			foreach( $post_ids as $post_id ) {
-				$this->current_post_count++;
-				$percent = round( $this->current_post_count / $limit * 100, 2 );
-				Logger::log( "{$this->current_post_count} / {$limit} ({$percent}%) | Processing Post ID {$post_id}");
-
-				$current_time = time();
-				$total_seconds = $current_time - $this->start_time;
-				$average_per_post = $total_seconds / $this->current_post_count;
-				$average_pretty = round( $average_per_post, 3 );
-				$minutes = floor( $total_seconds / 60 );
-				$seconds = $total_seconds % 60;
-				$remaining = ( $limit - $this->current_post_count ) * $average_per_post;
-				$remaining_min = floor( $remaining / 60 );
-				$remaining_sec = $remaining % 60;
-				Logger::log( "We've been at this for {$minutes}:{$seconds}. Based on the average of {$average_pretty} seconds per post, this will finish in {$remaining_min}:{$remaining_sec}" );
-
-				$post = get_post( $post_id );
-
-				$this->original_post_object = clone $post;
-				$this->current_post_object = $post;
-
-				$this->process_post();
-				$this->update_post();
-			}
-
-			$offset += $per_page;
-			$more_posts = ( $this->current_post_count < $limit );
-			Utils::stop_the_insanity();
-		} while ( $more_posts );
+		return "SELECT count(ID) FROM {$wpdb->posts}";
 	}
 
-	/**
-	 * The function that actually implements the work we need to get done.
-	 *
-	 * @return void
-	 */
-	abstract function process_post();
+	protected function get_query_base() {
+		global $wpdb;
+
+		return "SELECT ID FROM {$wpdb->posts}";
+	}
 
 	protected function get_where() {
 		global $wpdb;
@@ -166,17 +168,34 @@ abstract class PostIterator  {
 		return $orderby;
 	}
 
-	protected function get_limit( $offset, $limit ) {
-		$query = sprintf( "LIMIT %d,%d", $offset, $limit );
+	protected function get_query_offset() {
+		$offset = ( $this->page - 1 ) * $this->per_page;
+
+		return $offset;
+	}
+
+	protected function get_limit() {
+		$limit = sprintf( "LIMIT %d,%d", $this->get_query_offset(), $this->per_page );
+
+		return $limit;
+	}
+
+	protected function get_count_query() {
+		$query = implode( " ", array( $this->get_count_query_base(), $this->get_where() ) );
 
 		return $query;
 	}
 
-	/**
-	 * Calls wp_update_post
-	 */
+	protected function get_query() {
+		 $query = implode( " ", array( $this->get_query_base(), $this->get_where(), $this->get_orderby(), $this->get_limit() ) );
+
+		return $query;
+	}
+
+
+	abstract function process_post();
+
 	public function update_post() {
-		// @todo make sure this comparison actually works
 		if ( $this->original_post_object != $this->current_post_object ) {
 			wp_update_post( $this->current_post_object );
 			Logger::log( "Updated post ID {$this->current_post_object->ID}" );
