@@ -2,6 +2,8 @@
 
 namespace Cmmarslender\PostIterator;
 
+use Cmmarslender\Timer\Timer;
+
 abstract class PostIterator  {
 
 	public $post_type;
@@ -16,7 +18,12 @@ abstract class PostIterator  {
 
 	public $order;
 
-	public $start_time;
+	/**
+	 * Timer object
+	 *
+	 * @var \Cmmarslender\Timer\Timer
+	 */
+	public $timer;
 
 	/**
 	 * Will contain the total number of posts returned that match the constraints, NOT INCLUDING the limits and offsets
@@ -64,6 +71,8 @@ abstract class PostIterator  {
 		$this->limit = $args['limit'];
 		$this->orderby = $args['orderby'];
 		$this->order = $args['order'];
+
+		$this->timer = new Timer();
 	}
 
 	/**
@@ -71,7 +80,8 @@ abstract class PostIterator  {
 	 */
 	public function go() {
 		$this->count_posts();
-		$this->start_time = time();
+		$this->timer->set_total_items( $this->total_posts );
+		$this->timer->start();
 		$this->iterate();
 	}
 
@@ -109,20 +119,15 @@ abstract class PostIterator  {
 			$post_ids = wp_list_pluck( $results, 'ID' );
 
 			foreach( $post_ids as $post_id ) {
-				$this->current_post_count++;
-				$percent = round( $this->current_post_count / $limit * 100, 2 );
-				Logger::log( "{$this->current_post_count} / {$limit} ({$percent}%) | Processing Post ID {$post_id}");
+				$this->timer->tick();
 
-				$current_time = time();
-				$total_seconds = $current_time - $this->start_time;
-				$average_per_post = $total_seconds / $this->current_post_count;
-				$average_pretty = round( $average_per_post, 3 );
-				$minutes = floor( $total_seconds / 60 );
-				$seconds = $total_seconds % 60;
-				$remaining = ( $limit - $this->current_post_count ) * $average_per_post;
-				$remaining_min = floor( $remaining / 60 );
-				$remaining_sec = $remaining % 60;
-				Logger::log( "We've been at this for {$minutes}:{$seconds}. Based on the average of {$average_pretty} seconds per post, this will finish in {$remaining_min}:{$remaining_sec}" );
+				$percent = $this->timer->percent_complete();
+				Logger::log( "{$this->timer->current_item} / {$limit} ({$percent}%) | Processing Post ID {$post_id}");
+
+				$elapsed_pretty = $this->timer->format_time( $this->timer->elapsed_time() );
+				$remaining_pretty = $this->timer->format_time( $this->timer->remaining_time() );
+				$average_pretty = $this->timer->format_time( $this->timer->average() );
+				Logger::log( "We've been at this for {$elapsed_pretty}. Based on the average of {$average_pretty} seconds per post, this will finish in {$remaining_pretty}" );
 
 				$post = get_post( $post_id );
 

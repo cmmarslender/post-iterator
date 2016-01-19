@@ -14,7 +14,8 @@
         }
     },
     "require": {
-        "composer/installers": "~1.0"
+        "composer/installers": "~1.0",
+        "cmmarslender/timer": "^1.0"
     },
     "license": "MIT",
     "require-dev": {

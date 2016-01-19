@@ -4,9 +4,42 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "4efad96f1d9d39c49cd7289cf6f7c7e8",
-    "content-hash": "4c4109e3c417ce6fc59a00a5552285e6",
+    "hash": "675c203a5ff0720eeacb3e65b1244643",
+    "content-hash": "dbc22f49ef8e422ac4ec1987e94c2e8a",
     "packages": [
+        {
+            "name": "cmmarslender/timer",
+            "version": "1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cmmarslender/timer.git",
+                "reference": "e4016c4b9d9e660306b3d9a76dbc354f1cfd0ee7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cmmarslender/timer/zipball/e4016c4b9d9e660306b3d9a76dbc354f1cfd0ee7",
+                "reference": "e4016c4b9d9e660306b3d9a76dbc354f1cfd0ee7",
+                "shasum": ""
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Cmmarslender\\Timer\\": "includes/Cmmarslender/Timer"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Chris Marslender",
+                    "email": "chrismarslender@gmail.com"
+                }
+            ],
+            "description": "PHP Timer with optional per-item averages",
+            "time": "2016-01-19 01:41:38"
+        },
         {
             "name": "composer/installers",
             "version": "v1.0.22",
