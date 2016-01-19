@@ -16,6 +16,11 @@ abstract class PostIterator {
 	public $orderby;
 	public $order;
 
+	/**
+	 * @var \Cmmarslender\Timer\Timer
+	 */
+	public $timer;
+
 	/*
 	 * State Related Variables
 	 */

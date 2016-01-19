@@ -6,32 +6,6 @@ use Cmmarslender\Timer\Timer;
 
 abstract class PostIterator  {
 
-	public $post_type;
-
-	public $post_status;
-
-	public $offset;
-
-	public $limit;
-
-	public $orderby;
-
-	public $order;
-
-	/**
-	 * Timer object
-	 *
-	 * @var \Cmmarslender\Timer\Timer
-	 */
-	public $timer;
-
-	/**
-	 * Will contain the total number of posts returned that match the constraints, NOT INCLUDING the limits and offsets
-	 *
-	 * @var int
-	 */
-	public $total_posts;
-
 	/**
 	 * Counter that indicates the current post we're working on.
 	 *
