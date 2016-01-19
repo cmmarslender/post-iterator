@@ -6,10 +6,18 @@ use \Mockery as m;
 
 class PostIteratorTests extends TestCase {
 
+	public $results = array();
+
 	public function setUp() {
 		global $wpdb;
 
 		parent::setUp();
+
+		for ( $i = 1; $i <= 13; $i++ ) {
+			$object = new \stdClass();
+			$object->ID = $i;
+			$this->results[] = $object;
+		}
 
 		$wpdb = m::mock( 'wpdb' );
 		$wpdb->posts = 'wp_posts';
@@ -26,6 +34,14 @@ class PostIteratorTests extends TestCase {
 			return vsprintf( $query, $args );
 		} );
 		$wpdb->shouldReceive( '_real_escape' )->andReturnUsing( function( $arg ) { return $arg; });
+		$wpdb->shouldReceive( 'get_var' )
+			->with( "SELECT count(ID) FROM wp_posts WHERE post_type='post' AND post_status='publish'" )
+			->andReturn( '13' );
+		$wpdb->shouldReceive( 'get_results' )->andReturn(
+			array_slice( $this->results, 0, 5 ),
+			array_slice( $this->results, 5, 5 ),
+			array_slice( $this->results, 10, 3 )
+		);
 	}
 
 	public function invoke_method( $object, $method_name, $parameters = array() ) {
@@ -81,14 +97,65 @@ class PostIteratorTests extends TestCase {
 		$this->assertInstanceOf( 'Cmmarslender\\Timer\\Timer', $iterator->timer );
 	}
 
+	public function test_setup() {
+		$iterator = $this->get_iterator();
+
+		// @todo check we can only run setup once. Need to make srue to NOT passthru setup in the default setup for iterator
+		$iterator->setup();
+
+		$this->assertEquals( 13, $iterator->total_posts );
+		$this->assertEquals( 13, $iterator->timer->total_items );
+		$this->assertTrue( $iterator->is_setup );
+	}
+
+	public function test_have_pages() {
+		// We know that we are returning 13 for number of items, so this should be true for pages 1,2,3 and false for 4+
+		$iterator = $this->get_iterator( array( 'per_page' => 5 ) );
+		$iterator->setup();
+
+		// Page 1
+		$this->assertTrue( $iterator->have_pages() );
+
+		// Page 2
+		$iterator->page = 2;
+		$this->assertTrue( $iterator->have_pages() );
+
+		// Page 3
+		$iterator->page = 3;
+		$this->assertTrue( $iterator->have_pages() );
+
+		// Page 4
+		$iterator->page = 4;
+		$this->assertFalse( $iterator->have_pages() );
+	}
+
+	public function test_process_page() {
+		$iterator = $this->get_iterator( array( 'page' => 1, 'per_page' => 5 ) );
+		$iterator->shouldReceive('process_post')->times(5)->andReturnNull();
+
+		$post_objects = array();
+		for ( $i = 1; $i <= 5; $i++ ) {
+			$object = new \stdClass();
+			$object->ID = $i;
+			$post_objects[] = $object;
+		}
+
+		\WP_Mock::wpFunction( 'get_post', array(
+			'return_in_order' => $post_objects,
+		) );
+
+		\WP_Mock::wpFunction( 'wp_list_pluck', array(
+			'return' => array( 1, 2, 3, 4, 5 ),
+		));
+
+		$iterator->process_page();
+		$this->assertEquals( 2, $iterator->page );
+	}
+
 	/**
 	 * Test that when we get a result from wpdb->get_var it gets assigned to total posts
 	 */
 	public function test_count_posts() {
-		global $wpdb;
-
-		$wpdb->shouldReceive( 'get_var' )->andReturn( '26' );
-
 		$iterator = $this->get_iterator();
 		$this->invoke_method( $iterator, 'count_posts' );
 		$this->assertEquals( 13, $iterator->total_posts );
@@ -220,6 +287,52 @@ class PostIteratorTests extends TestCase {
 		$expected = "SELECT ID FROM wp_posts WHERE post_type='post' AND post_status='publish' ORDER BY post_date DESC LIMIT 0,100";
 		$result = $this->invoke_method( $iterator, 'get_query' );
 		$this->assertEquals( $expected, $result );
+	}
+
+	public function test_update_post_original_current_are_same() {
+		$iterator = $this->get_iterator();
+
+		$post = new \stdClass();
+		$post->ID = 1;
+
+		$iterator->original_post_object = clone $post;
+		$iterator->current_post_object = $post;
+
+		$this->assertEquals( $iterator->original_post_object, $iterator->current_post_object );
+	}
+
+	public function test_update_post_doesnt_update_with_no_change() {
+		$iterator = $this->get_iterator();
+
+		$post = new \stdClass();
+		$post->ID = 1;
+
+		$iterator->original_post_object = clone $post;
+		$iterator->current_post_object = $post;
+
+		\WP_Mock::wpFunction( 'wp_update_post', array(
+			'times' => 0
+		));
+
+		$iterator->update_post();
+	}
+
+	public function test_update_post_updates_with_change() {
+		$iterator = $this->get_iterator();
+
+		$post = new \stdClass();
+		$post->ID = 1;
+
+		$iterator->original_post_object = clone $post;
+		$iterator->current_post_object = $post;
+
+		$iterator->current_post_object->post_title = 'something good';
+
+		\WP_Mock::wpFunction( 'wp_update_post', array(
+			'times' => 1,
+		));
+
+		$iterator->update_post();
 	}
 
 }
